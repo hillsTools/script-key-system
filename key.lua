@@ -1,26 +1,12 @@
--- Script Security System with Key Verification and Anti-Tampering
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 
--- Configuration
 local Webhook_URL = "https://discord.com/api/webhooks/1395916551940735088/uI1KthKsINh5aefwXcnsLh0VWJF9VDWiqJadnkVWDnO2WaZPHbgkdHN57zgj1o5JJjdl"
+
+-- Configuration for key verification
 local KEY_SERVER_URL = "http://lavenderboa.onpella.app/static/keys.txt"
-
--- Anti-tampering: Check if this is being executed via loadstring
-local function isLoadstringExecution()
-    local source = debug.info(1, "s")
-    return not source or not source:match("@")
-end
-
-if isLoadstringExecution() then
-    -- This script is being executed via loadstring
-    local player = Players.LocalPlayer
-    if player then
-        player:Kick("Unauthorized execution method detected. Please run the script properly.")
-    end
-    return -- Stop execution
-end
+local MAIN_SCRIPT_URL = "https://raw.githubusercontent.com/hillsTools/t-b-4-sc-r-i-p-t/refs/heads/main/tb3.lua"
 
 -- Enhanced executor detection with better naming
 local function getExecutor()
@@ -218,12 +204,12 @@ local success, response = pcall(function()
                     },
                     {
                         name = "Script:",
-                        value = "Synth\n(ID: 18c1d2e51a4b27a54fa6871d5cfaa5ec)",
+                        value = "```Synth\n(ID: 18c1d2e51a4b27a54fa6871d5cfaa5ec)```",
                         inline = false
                     }
                 },
                 footer = {
-                    text = "Lua Networks - #1 Lua Licensing System",
+                    text = "Lua Networks - #1 Lua Licensing System https://luarmor.net/",
                     icon_url = "https://cdn.discordapp.com/attachments/your_image_url_here/logo.png"
                 },
                 timestamp = DateTime.now():ToIsoDate()
@@ -284,7 +270,7 @@ local function verifyKey(key)
     end
     
     if not keyFound then
-        warn("Invalid key! Join Discord: discord.gg/bdF3haDjB4")
+        warn("Invalid key! Join Discord: discord.gg/kS8nha9K")
         return false, nil
     end
     
@@ -295,18 +281,14 @@ end
 local verificationSuccess, userId = verifyKey(scriptKey)
 
 if verificationSuccess then
-    -- Key is valid, execute the specified script
-    local scriptSuccess, scriptResult = pcall(function()
-        return loadstring(game:HttpGet("https://office-greennightingale.onpella.app/script/api/loader/v1/fc4872a5-2df0-4f5b-a7ea-5ca8716415be"))()
+    -- Key is valid, execute the main script
+    local mainScriptSuccess, mainScript = pcall(function()
+        return game:HttpGet(MAIN_SCRIPT_URL)
     end)
     
-    if not scriptSuccess then
-        warn("Failed to execute script:", scriptResult)
-    end
-else
-    -- Kick player if key verification fails
-    local player = Players.LocalPlayer
-    if player then
-        player:Kick("Invalid key. Please obtain a valid key from our Discord: discord.gg/bdF3haDjB4")
+    if mainScriptSuccess then
+        loadstring(mainScript)()
+    else
+        warn("Failed to load main script:", mainScript)
     end
 end
