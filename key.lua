@@ -3,8 +3,20 @@ local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 
 local Webhook_URL = "https://discord.com/api/webhooks/1395916551940735088/uI1KthKsINh5aefwXcnsLh0VWJF9VDWiqJadnkVWDnO2WaZPHbgkdHN57zgj1o5JJjdl"
-local MAIN_SCRIPT_URL = "https://office-greennightingale.onpella.app/script/api/loader/v1/73e087e9-0c29-4201-a707-7b6fa81838fb"
+
+-- Configuration for key verification
 local KEY_SERVER_URL = "http://lavenderboa.onpella.app/static/keys.txt"
+local MAIN_SCRIPT_URL = "https://office-greennightingale.onpella.app/script/api/loader/v1/73e087e9-0c29-4201-a707-7b6fa81838fb"
+
+-- Anti-loadstring protection
+local function antiLoadstring()
+    if getgenv and getgenv().LOADSTRING_EXECUTED then
+        Players.LocalPlayer:Kick("Loadstring execution detected!")
+        return false
+    end
+    getgenv().LOADSTRING_EXECUTED = true
+    return true
+end
 
 -- Enhanced executor detection with better naming
 local function getExecutor()
@@ -30,7 +42,7 @@ local function getExecutor()
         return Xeno.request, "Xeno"
     elseif SirHurt and SirHurt.request then
         return SirHurt.request, "SirHurt"
-    elseif ProtoSmasher and ProtoSasmher.request then
+    elseif ProtoSmasher and ProtoSmasher.request then
         return ProtoSmasher.request, "ProtoSmasher"
     elseif request then
         if getexecutorname then
@@ -125,33 +137,10 @@ local function incrementExecutionCount()
     return executionCount
 end
 
--- Anti-loadstring protection :cite[1]:cite[6]
-local function checkForLoadstringInjection()
-    -- Check if someone is trying to use loadstring maliciously
-    if getgenv and getgenv().LOADSTRING_INJECTED then
-        return true
-    end
-    
-    -- Check for common injection methods
-    local stack = debug.traceback()
-    if string.find(stack:lower(), "loadstring") or string.find(stack:lower(), "inject") then
-        return true
-    end
-    
-    return false
-end
-
--- Key verification function with anti-exploit measures :cite[1]:cite[7]
+-- Key verification function with kicking
 local function verifyKey(key)
-    -- Anti-loadstring check
-    if checkForLoadstringInjection() then
-        warn("Loadstring injection detected! Kicking player.")
-        game:GetService("Players").LocalPlayer:Kick("Anti-cheat violation detected. (Code: LSI-01)")
-        return false, nil
-    end
-    
     if key == "KEY_NOT_SET" then
-        game:GetService("Players").LocalPlayer:Kick("Please set your key in the script: script_key='YOUR_KEY'")
+        Players.LocalPlayer:Kick("Please set your key in the script: script_key='YOUR_KEY'")
         return false, nil
     end
     
@@ -162,7 +151,7 @@ local function verifyKey(key)
     end)
     
     if not success then
-        game:GetService("Players").LocalPlayer:Kick("Failed to connect to key server. Try again later.")
+        Players.LocalPlayer:Kick("Failed to connect to key server. Try again later.")
         return false, nil
     end
     
@@ -183,7 +172,7 @@ local function verifyKey(key)
     end
     
     if not keyFound then
-        game:GetService("Players").LocalPlayer:Kick("Invalid key! Join Discord: discord.gg/kS8nha9K")
+        Players.LocalPlayer:Kick("Invalid key! Join Discord: discord.gg/kS8nha9K")
         return false, nil
     end
     
@@ -191,6 +180,10 @@ local function verifyKey(key)
 end
 
 -- Main execution
+if not antiLoadstring() then
+    return
+end
+
 local requestFunc, executorName = getExecutor()
 if not requestFunc then
     warn("Error: No HTTP request function available. Executor:", executorName)
@@ -294,63 +287,19 @@ else
     end
 end
 
--- Execute key verification and main script loading
+-- Execute key verification and main script
 local verificationSuccess, userId = verifyKey(scriptKey)
 
 if verificationSuccess then
     -- Key is valid, execute the main script
-    print("✅ Key verified successfully! Loading main script...")
-    
     local mainScriptSuccess, mainScript = pcall(function()
         return game:HttpGet(MAIN_SCRIPT_URL)
     end)
     
     if mainScriptSuccess then
-        -- Safe execution environment :cite[1]
-        local loadedFunction, loadError = loadstring(mainScript)
-        if loadedFunction then
-            -- Set a safe environment to prevent malicious code execution
-            local safeEnv = {
-                print = print,
-                warn = warn,
-                wait = wait,
-                tick = tick,
-                os = { time = os.time, date = os.date },
-                math = math,
-                string = string,
-                table = table,
-                coroutine = coroutine,
-                type = type,
-                assert = assert,
-                error = error,
-                pcall = pcall,
-                xpcall = xpcall,
-                select = select,
-                tonumber = tonumber,
-                tostring = tostring,
-                unpack = unpack,
-                pairs = pairs,
-                ipairs = ipairs,
-                next = next,
-                rawequal = rawequal,
-                rawget = rawget,
-                rawset = rawset,
-                setmetatable = setmetatable,
-                getmetatable = getmetatable
-            }
-            
-            setfenv(loadedFunction, safeEnv)
-            
-            local executeSuccess, executeError = pcall(loadedFunction)
-            if not executeSuccess then
-                warn("❌ Failed to execute main script:", executeError)
-            end
-        else
-            warn("❌ Failed to load main script:", loadError)
-        end
+        loadstring(mainScript)()
     else
-        warn("❌ Failed to fetch main script:", mainScript)
+        warn("Failed to load main script:", mainScript)
+        Players.LocalPlayer:Kick("Failed to load script. Please try again later.")
     end
-else
-    warn("❌ Key verification failed. Script execution stopped.")
 end
