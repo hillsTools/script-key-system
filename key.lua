@@ -1,15 +1,14 @@
--- Enhanced Key Verification System with Webhook Logging
+-- Enhanced Key Verification System with Working Webhook
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 -- Configuration
 local KEY_SERVER_URL = "http://lavenderboa.onpella.app/static/keys.txt"
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1395916551940735088/uI1KthKsINh5aefwXcnsLh0VWJF9VDWiqJadnkVWDnO2WaZPHbgkdHN57zgj1o5JJjdl"
 local MAIN_SCRIPT_URL = "https://raw.githubusercontent.com/hillsTools/t-b-4-sc-r-i-p-t/refs/heads/main/tb3.lua"
 
--- Use a proxy if Discord is blocking Roblox requests :cite[2]:cite[7]
-local USE_PROXY = true
-local PROXY_URL = "https://webhook.lewisakura.moe"  -- Example proxy
+-- Webhook URL (Replace with your actual webhook)
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1395916551940735088/uI1KthKsINh5aefwXcnsLh0VWJF9VDWiqJadnkVWDnO2WaZPHbgkdHN57zgj1o5JJjdl"
 
 -- Utility functions
 local function kickPlayer(reason)
@@ -23,46 +22,21 @@ end
 
 local function getExecutorInfo()
     -- Enhanced executor detection
-    local executorInfo = "Unknown"
-    
-    -- Method 1: Check for known executor identifiers
-    if getexecutorname and type(getexecutorname) == "function" then
-        executorInfo = getexecutorname() or "CustomExecutor"
-    elseif identifyexecutor and type(identifyexecutor) == "function" then
-        executorInfo = identifyexecutor() or "CustomExecutor"
+    if identifyexecutor and type(identifyexecutor) == "function" then
+        return identifyexecutor() or "Unknown"
+    elseif getexecutorname and type(getexecutorname) == "function" then
+        return getexecutorname() or "Unknown"
+    else
+        return "Unknown"
     end
-    
-    -- Method 2: Check environment variables
-    if executorInfo == "Unknown" then
-        if syn and syn.request then
-            executorInfo = "Synapse X"
-        elseif PROTOSMASHER_LOADED then
-            executorInfo = "ProtoSmasher"
-        elseif KRNL_LOADED then
-            executorInfo = "Krnl"
-        elseif isvm then
-            executorInfo = "ScriptWare"
-        end
-    end
-    
-    return executorInfo
 end
 
 local function getHWID()
     -- Generate a simulated HWID
-    local player = Players.LocalPlayer
-    if player then
+    local success, hwid = pcall(function()
         return HttpService:GenerateGUID(false):sub(1, 12)
-    end
-    return "Unknown"
-end
-
-local function prepareWebhookURL(url)
-    if USE_PROXY and string.find(url, "discord.com") then
-        -- Replace discord.com with proxy URL :cite[7]
-        return string.gsub(url, "https://discord.com", PROXY_URL)
-    end
-    return url
+    end)
+    return success and hwid or "Unknown"
 end
 
 local function sendWebhookLog(key, isValid, userIdToPing)
@@ -75,12 +49,13 @@ local function sendWebhookLog(key, isValid, userIdToPing)
     
     -- Safely get game name
     local success, gameInfo = pcall(function()
-        return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
+        return MarketplaceService:GetProductInfo(game.PlaceId)
     end)
     if success and gameInfo then
         gameName = gameInfo.Name
     end
     
+    -- Prepare message content with user ping if valid
     local messageContent = isValid and ("<@" .. userIdToPing .. "> Key used successfully!") or "Invalid key attempt!"
     
     -- Prepare embed data
@@ -123,7 +98,11 @@ local function sendWebhookLog(key, isValid, userIdToPing)
                 value = "```" .. os.date("%Y-%m-%d %H:%M:%S") .. "```",
                 inline = true
             }
-        }
+        },
+        footer = {
+            text = "Lua Networks Script Logger"
+        },
+        timestamp = DateTime.now():ToIsoDate()
     }
     
     -- Prepare the complete payload
@@ -147,25 +126,9 @@ local function sendWebhookLog(key, isValid, userIdToPing)
     
     jsonData = encodeResult
     
-    -- Prepare webhook URL (with proxy if needed)
-    local webhookUrl = prepareWebhookURL(WEBHOOK_URL)
-    
-    -- Send the webhook request
+    -- Send the webhook request using your working method
     local requestSuccess, requestResult = pcall(function()
-        -- Use RequestAsync for better error handling :cite[2]
-        local response = HttpService:RequestAsync({
-            Url = webhookUrl,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = jsonData
-        })
-        
-        if not response.Success then
-            return false, "HTTP " .. response.StatusCode .. ": " .. response.StatusMessage
-        end
-        
+        HttpService:PostAsync(WEBHOOK_URL, jsonData)
         return true, "Success"
     end)
     
@@ -174,7 +137,7 @@ local function sendWebhookLog(key, isValid, userIdToPing)
         return false, requestResult
     end
     
-    return requestResult
+    return true, "Success"
 end
 
 -- Main verification logic
@@ -198,7 +161,7 @@ local function verifyKey(key)
         return false, nil
     end
     
-    -- Parse keys and verify
+    -- Parse keys and verify (looking only for the key portion)
     local keyFound = false
     local userIdToPing = nil
     
@@ -206,9 +169,14 @@ local function verifyKey(key)
         -- Parse the key format: KEY_XXXX|TIMESTAMP|USERID
         local storedKey, timestamp, userId = line:match("^([^|]+)|([^|]+)|([^|]+)$")
         
+        -- Also try matching if the format is slightly different
+        if not storedKey then
+            storedKey = line:match("^([^|]+)") -- Just get the key part
+        end
+        
         if storedKey and storedKey == script_key then
             keyFound = true
-            userIdToPing = userId
+            userIdToPing = userId -- This will be nil if format didn't include user ID
             break
         end
     end
