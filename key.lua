@@ -204,12 +204,12 @@ local success, response = pcall(function()
                     },
                     {
                         name = "Script:",
-                        value = "```Synth\n(ID: 18c1d2e51a4b27a54fa6871d5cfaa5ec)```",
+                        value = "Synth\n(ID: 18c1d2e51a4b27a54fa6871d5cfaa5ec)",
                         inline = false
                     }
                 },
                 footer = {
-                    text = "Lua Networks - #1 Lua Licensing System https://luarmor.net/",
+                    text = "Lua Networks - #1 Lua Licensing System",
                     icon_url = "https://cdn.discordapp.com/attachments/your_image_url_here/logo.png"
                 },
                 timestamp = DateTime.now():ToIsoDate()
@@ -270,7 +270,7 @@ local function verifyKey(key)
     end
     
     if not keyFound then
-        warn("Invalid key! Join Discord: discord.gg/kS8nha9K")
+        warn("Invalid key! Join Discord: discord.gg/bdF3haDjB4")
         return false, nil
     end
     
