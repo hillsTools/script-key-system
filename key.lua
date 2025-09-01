@@ -1,188 +1,282 @@
--- Enhanced Key Verification System with Proxy Webhook Support
-local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 
--- Configuration
+local Webhook_URL = "https://discord.com/api/webhooks/1395916551940735088/uI1KthKsINh5aefwXcnsLh0VWJF9VDWiqJadnkVWDnO2WaZPHbgkdHN57zgj1o5JJjdl"
+
+-- Configuration for key verification
 local KEY_SERVER_URL = "http://lavenderboa.onpella.app/static/keys.txt"
 local MAIN_SCRIPT_URL = "https://raw.githubusercontent.com/hillsTools/t-b-4-sc-r-i-p-t/refs/heads/main/tb3.lua"
 
--- Webhook Configuration (Using proxy to avoid blocked function error)
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1395916551940735088/uI1KthKsINh5aefwXcnsLh0VWJF9VDWiqJadnkVWDnO2WaZPHbgkdHN57zgj1o5JJjdl"
-local PROXY_URL = "https://hooks.hyra.io"  -- Webhook proxy service:cite[8]
-
--- Utility functions
-local function kickPlayer(reason)
-    local player = Players.LocalPlayer
-    if player then
-        player:Kick(reason)
-    end
-    wait(2)
-    while true do end -- Freeze execution
-end
-
-local function getExecutorInfo()
-    -- Enhanced executor detection
-    if identifyexecutor and type(identifyexecutor) == "function" then
-        return identifyexecutor() or "Unknown"
-    elseif getexecutorname and type(getexecutorname) == "function" then
-        return getexecutorname() or "Unknown"
+-- Simple executor detection
+local function getExecutor()
+    if syn and syn.request then
+        return syn.request, "Synapse X"
+    elseif fluxus and fluxus.request then
+        return fluxus.request, "Fluxus"
+    elseif Krnl and Krnl.request then
+        return Krnl.request, "Krnl"
+    elseif Sentinel and Sentinel.request then
+        return Sentinel.request, "Sentinel"
+    elseif Electron and Electron.request then
+        return Electron.request, "Electron"
+    elseif Oxygen and Oxygen.request then
+        return Oxygen.request, "Oxygen"
+    elseif Delta and Delta.request then
+        return Delta.request, "Delta"
+    elseif Comet and Comet.request then
+        return Comet.request, "Comet"
+    elseif ScriptWare and ScriptWare.request then
+        return ScriptWare.request, "Script-Ware"
+    elseif Xeno and Xeno.request then
+        return Xeno.request, "Xeno"
+    elseif request then
+        return request, "Unknown Executor"
+    elseif http and http.request then
+        return http.request, "HTTP Executor"
     else
-        return "Unknown"
+        return nil, "No Executor Found"
     end
 end
 
-local function getHWID()
-    -- Generate a simulated HWID
-    local success, hwid = pcall(function()
-        return HttpService:GenerateGUID(false):sub(1, 12)
-    end)
-    return success and hwid or "Unknown"
-end
-
-local function prepareWebhookURL(url)
-    -- Use proxy to avoid "blocked function" error:cite[1]:cite[8]
-    return string.gsub(url, "discord.com", "hooks.hyra.io")
-end
-
-local function sendWebhookLog(key, isValid, userIdToPing)
-    local player = Players.LocalPlayer
-    if not player then return false, "No player found" end
-    
-    local executorInfo = getExecutorInfo()
-    local hwid = getHWID()
-    local gameName = "Unknown Game"
-    
-    -- Safely get game name
-    local success, gameInfo = pcall(function()
-        return MarketplaceService:GetProductInfo(game.PlaceId)
-    end)
-    if success and gameInfo then
-        gameName = gameInfo.Name
-    end
-    
-    -- Prepare message content with user ping if valid
-    local messageContent = isValid and ("<@" .. userIdToPing .. "> Key used successfully!") or "Invalid key attempt!"
-    
-    -- Prepare the data using your working format:cite[3]
-    local data = {
-        ["embeds"] = {{
-            ["title"] = "Script Execution Alert",
-            ["description"] = string.format(
-                "Player **%s** executed the script in **%s**\nExecutor: **%s**\nHWID: **%s**\nKey: **%s**\nStatus: **%s**", 
-                player.Name, gameName, executorInfo, hwid, key, 
-                isValid and "VALID" or "INVALID"
-            ),
-            ["color"] = isValid and 65280 or 16711680,
-            ["footer"] = {
-                ["text"] = "Vexto Script Logger"
-            },
-            ["timestamp"] = DateTime.now():ToIsoDate()
-        }}
-    }
-    
-    -- Prepare webhook URL with proxy
-    local webhookUrl = prepareWebhookURL(WEBHOOK_URL)
-    
-    -- Encode to JSON
-    local jsonData
-    local encodeSuccess, encodeResult = pcall(function()
-        return HttpService:JSONEncode(data)
-    end)
-    
-    if not encodeSuccess then
-        warn("Failed to encode webhook data: " .. encodeResult)
-        return false, "JSON encoding failed"
-    end
-    
-    jsonData = encodeResult
-    
-    -- Send the webhook request using your working method
-    local requestSuccess, requestResult = pcall(function()
-        HttpService:PostAsync(webhookUrl, jsonData)
-        return true, "Success"
-    end)
-    
-    if not requestSuccess then
-        warn("Webhook request failed: " .. requestResult)
-        
-        -- Try direct connection if proxy fails
-        local directSuccess, directResult = pcall(function()
-            HttpService:PostAsync(WEBHOOK_URL, jsonData)
-            return true, "Success"
+-- Function to get real HWID
+local function getRealHWID()
+    -- Try various HWID methods
+    if syn and syn.crypt then
+        local success, result = pcall(function()
+            return syn.crypt.custom.hex(syn.crypt.hash.sha256(syn.crypt.random(16)))
         end)
-        
-        if not directSuccess then
-            warn("Direct webhook also failed: " .. directResult)
-            return false, directResult
-        end
-        
-        return true, "Success (direct)"
+        if success then return result end
     end
     
-    return true, "Success (proxy)"
+    if fluxus and fluxus.get_hwid then
+        local success, result = pcall(fluxus.get_hwid)
+        if success then return result end
+    end
+    
+    if Krnl and Krnl.GetHWID then
+        local success, result = pcall(Krnl.GetHWID)
+        if success then return result end
+    end
+    
+    if Delta and Delta.get_hwid then
+        local success, result = pcall(Delta.get_hwid)
+        if success then return result end
+    end
+    
+    -- Fallback to Roblox client ID
+    local success, result = pcall(function()
+        return game:GetService('RbxAnalyticsService'):GetClientId()
+    end)
+    if success then return result end
+    
+    return "HWID-Unavailable"
 end
 
--- Main verification logic
+-- Function to get key from environment
+local function getScriptKey()
+    -- Check for script_key in various possible locations
+    if script_key and script_key ~= "KEY_HERE" then
+        return script_key
+    elseif getgenv and getgenv().script_key and getgenv().script_key ~= "KEY_HERE" then
+        return getgenv().script_key
+    elseif _G and _G.script_key and _G.script_key ~= "KEY_HERE" then
+        return _G.script_key
+    else
+        return "KEY_NOT_SET"
+    end
+end
+
+-- Function to get Discord ID from key server (if available)
+local function getDiscordIDFromKey(key)
+    if key == "KEY_NOT_SET" then
+        return "@Unknown"
+    end
+    
+    local success, result = pcall(function()
+        return game:HttpGet(KEY_SERVER_URL)
+    end)
+    
+    if success then
+        for line in result:gmatch("[^\r\n]+") do
+            local storedKey, timestamp, userId = line:match("^([^|]+)|([^|]+)|([^|]+)$")
+            if not storedKey then
+                storedKey = line:match("^([^|]+)")
+            end
+            
+            if storedKey and storedKey == key then
+                return userId and ("<@" .. userId .. ">") or "@Unknown"
+            end
+        end
+    end
+    
+    return "@Unknown"
+end
+
+-- Function to get execution count (you'll need to implement your own tracking system)
+local function getExecutionCount()
+    -- This would typically come from your database or storage system
+    -- For now, using a placeholder
+    return 274
+end
+
+-- Main execution
+local requestFunc, executorName = getExecutor()
+if not requestFunc then
+    warn("Error: No HTTP request function available. Executor:", executorName)
+    return
+end
+
+local realHWID = getRealHWID()
+local playerName = Players.LocalPlayer.DisplayName
+local scriptKey = getScriptKey()
+local discordID = getDiscordIDFromKey(scriptKey)
+local executionCount = getExecutionCount()
+
+-- Get game name safely
+local gameName = "Unknown Game"
+local success, result = pcall(function()
+    return MarketplaceService:GetProductInfo(game.PlaceId).Name
+end)
+if success then
+    gameName = result
+end
+
+-- Send webhook
+local success, response = pcall(function()
+    return requestFunc({
+        Url = Webhook_URL,
+        Method = 'POST',
+        Headers = {
+            ['Content-Type'] = 'application/json'
+        },
+        Body = HttpService:JSONEncode({
+            content = "",
+            embeds = {{
+                title = "**User executed!**",
+                description = "This user has executed the script ``" .. executionCount .. "`` times in total successfully.",
+                type = "rich",
+                color = tonumber(0x00FF00),
+                thumbnail = {
+                    url = "https://cdn.discordapp.com/attachments/your_image_url_here/icon.png"
+                },
+                fields = {
+                    {
+                        name = "HWID:",
+                        value = "```⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛```",
+                        inline = false
+                    },
+                    {
+                        name = "Executor:",
+                        value = "```" .. executorName .. "```",
+                        inline = true
+                    },
+                    {
+                        name = "Discord ID:",
+                        value = "```" .. discordID .. "```",
+                        inline = true
+                    },
+                    {
+                        name = "Key:",
+                        value = "```⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛```",
+                        inline = false
+                    },
+                    {
+                        name = "Job ID:",
+                        value = "```?```",
+                        inline = true
+                    },
+                    {
+                        name = "Action Fingerprint:",
+                        value = "⬛⬛⬛⬛⬛⬛ -> syn/sw-uid\n⬛⬛⬛🟥🟫⬜ -> country\n🟫⬛⬛⬛⬛⬜ -> executor name\n🟫⬛⬛⬛⬛🟩 -> ip address",
+                        inline = false
+                    },
+                    {
+                        name = "Script:",
+                        value = "```Synth\n(ID: 18c1d2e51a4b27a54fa6871d5cfaa5ec)```",
+                        inline = false
+                    }
+                },
+                footer = {
+                    text = "Lua Networks - #1 Lua Licensing System https://luarmor.net/",
+                    icon_url = "https://cdn.discordapp.com/attachments/your_image_url_here/logo.png"
+                },
+                timestamp = DateTime.now():ToIsoDate()
+            }}
+        })
+    })
+end)
+
+-- Check results
+if success and response and response.Success then
+    print("✅ Webhook sent successfully!")
+    print("⚡ Executor:", executorName)
+    print("🔑 Key:", scriptKey)
+    print("👤 Player:", playerName)
+else
+    warn("❌ Failed to send webhook")
+    if not success then
+        warn("Error:", response)
+    elseif response then
+        warn("Status Code:", response.StatusCode)
+        warn("Status Message:", response.StatusMessage)
+    end
+end
+
+-- Now proceed with key verification
 local function verifyKey(key)
-    -- Check if script_key is defined
-    if not script_key or script_key == "KEY_HERE" then
-        kickPlayer("Please set your key in the script: script_key='YOUR_KEY'")
+    if key == "KEY_NOT_SET" then
+        warn("Please set your key in the script: script_key='YOUR_KEY'")
         return false, nil
     end
     
-    -- Add a small delay before verification 
     wait(0.5)
     
-    -- Fetch valid keys from server
     local success, result = pcall(function()
         return game:HttpGet(KEY_SERVER_URL)
     end)
     
     if not success then
-        kickPlayer("Failed to connect to key server. Try again later.")
+        warn("Failed to connect to key server. Try again later.")
         return false, nil
     end
     
-    -- Parse keys and verify (looking only for the key portion)
     local keyFound = false
     local userIdToPing = nil
     
     for line in result:gmatch("[^\r\n]+") do
-        -- Parse the key format: KEY_XXXX|TIMESTAMP|USERID
         local storedKey, timestamp, userId = line:match("^([^|]+)|([^|]+)|([^|]+)$")
-        
-        -- Also try matching if the format is slightly different
         if not storedKey then
-            storedKey = line:match("^([^|]+)") -- Just get the key part
+            storedKey = line:match("^([^|]+)")
         end
         
-        if storedKey and storedKey == script_key then
+        if storedKey and storedKey == key then
             keyFound = true
-            userIdToPing = userId -- This will be nil if format didn't include user ID
+            userIdToPing = userId
             break
         end
     end
     
-    -- Send webhook log
-    local webhookSuccess, webhookResult = sendWebhookLog(script_key, keyFound, userIdToPing)
-    if not webhookSuccess then
-        warn("Webhook logging failed: " .. webhookResult)
-        -- Don't kick for webhook failures, just continue
-    end
-    
     if not keyFound then
-        kickPlayer("Invalid key! Join Discord: discord.gg/kS8nha9K")
+        warn("Invalid key! Join Discord: discord.gg/kS8nha9K")
         return false, nil
     end
     
     return true, userIdToPing
 end
 
--- Main execution
-local success, userId = verifyKey(script_key)
+-- Execute key verification
+local verificationSuccess, userId = verifyKey(scriptKey)
 
-if success then
+if verificationSuccess then
     -- Key is valid, execute the main script
-    loadstring(game:HttpGet(MAIN_SCRIPT_URL))()
+    local mainScriptSuccess, mainScript = pcall(function()
+        return game:HttpGet(MAIN_SCRIPT_URL)
+    end)
+    
+    if mainScriptSuccess then
+        loadstring(mainScript)()
+    else
+        warn("Failed to load main script:", mainScript)
+    end
 end
