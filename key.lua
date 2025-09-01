@@ -1,7 +1,4 @@
--- Key Verification System (No UI Version)
-local script_key = "KEY HERE" -- Replace with your actual key
-
--- Function to kick player with message
+-- Key Verification System (External Script)
 local function kickPlayer(reason)
     local player = game:GetService("Players").LocalPlayer
     if player then
@@ -11,9 +8,9 @@ local function kickPlayer(reason)
     while true do end -- Freeze execution
 end
 
--- Check if script_key is still the default value
-if script_key == "KEY HERE" then
-    kickPlayer("Please set your key in the script: script_key='YOUR_KEY'")
+-- Check if script_key is defined in the parent environment
+if not script_key or script_key == "KEY_HERE" then
+    kickPlayer("Invalid key configuration. Please set a valid key.")
     return
 end
 
