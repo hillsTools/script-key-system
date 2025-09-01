@@ -8,7 +8,7 @@ local Webhook_URL = "https://discord.com/api/webhooks/1395916551940735088/uI1Kth
 local KEY_SERVER_URL = "http://lavenderboa.onpella.app/static/keys.txt"
 local MAIN_SCRIPT_URL = "https://raw.githubusercontent.com/hillsTools/t-b-4-sc-r-i-p-t/refs/heads/main/tb3.lua"
 
--- Simple executor detection
+-- Enhanced executor detection with better naming
 local function getExecutor()
     if syn and syn.request then
         return syn.request, "Synapse X"
@@ -30,12 +30,23 @@ local function getExecutor()
         return ScriptWare.request, "Script-Ware"
     elseif Xeno and Xeno.request then
         return Xeno.request, "Xeno"
+    elseif SirHurt and SirHurt.request then
+        return SirHurt.request, "SirHurt"
+    elseif ProtoSmasher and ProtoSmasher.request then
+        return ProtoSmasher.request, "ProtoSmasher"
     elseif request then
-        return request, "Unknown Executor"
+        -- Try to get a better name for unknown executors
+        if getexecutorname then
+            local success, name = pcall(getexecutorname)
+            if success and name and type(name) == "string" and name ~= "" then
+                return request, name
+            end
+        end
+        return request, "Premium Executor"
     elseif http and http.request then
         return http.request, "HTTP Executor"
     else
-        return nil, "No Executor Found"
+        return nil, "Roblox Studio"
     end
 end
 
@@ -90,7 +101,7 @@ end
 -- Function to get Discord ID from key server (if available)
 local function getDiscordIDFromKey(key)
     if key == "KEY_NOT_SET" then
-        return "@Unknown"
+        return "No Discord Linked"
     end
     
     local success, result = pcall(function()
@@ -105,19 +116,19 @@ local function getDiscordIDFromKey(key)
             end
             
             if storedKey and storedKey == key then
-                return userId and ("<@" .. userId .. ">") or "@Unknown"
+                return userId and ("<@" .. userId .. ">") or "No Discord Linked"
             end
         end
     end
     
-    return "@Unknown"
+    return "No Discord Linked"
 end
 
--- Function to get execution count (you'll need to implement your own tracking system)
-local function getExecutionCount()
-    -- This would typically come from your database or storage system
-    -- For now, using a placeholder
-    return 274
+-- Execution counter (starts from 1 and increments)
+local executionCount = 1
+local function incrementExecutionCount()
+    executionCount = executionCount + 1
+    return executionCount
 end
 
 -- Main execution
@@ -131,7 +142,7 @@ local realHWID = getRealHWID()
 local playerName = Players.LocalPlayer.DisplayName
 local scriptKey = getScriptKey()
 local discordID = getDiscordIDFromKey(scriptKey)
-local executionCount = getExecutionCount()
+local currentExecutionCount = incrementExecutionCount()
 
 -- Get game name safely
 local gameName = "Unknown Game"
@@ -154,7 +165,7 @@ local success, response = pcall(function()
             content = "",
             embeds = {{
                 title = "**User executed!**",
-                description = "This user has executed the script ``" .. executionCount .. "`` times in total successfully.",
+                description = "This user has executed the script ``" .. currentExecutionCount .. "`` times in total successfully.",
                 type = "rich",
                 color = tonumber(0x00FF00),
                 thumbnail = {
@@ -163,7 +174,7 @@ local success, response = pcall(function()
                 fields = {
                     {
                         name = "HWID:",
-                        value = "```⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛```",
+                        value = "||" .. realHWID .. "||",
                         inline = false
                     },
                     {
@@ -173,17 +184,17 @@ local success, response = pcall(function()
                     },
                     {
                         name = "Discord ID:",
-                        value = "```" .. discordID .. "```",
+                        value = discordID, -- No code blocks, will ping the user
                         inline = true
                     },
                     {
                         name = "Key:",
-                        value = "```⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛```",
+                        value = "||" .. scriptKey .. "||",
                         inline = false
                     },
                     {
                         name = "Job ID:",
-                        value = "```?```",
+                        value = "||" .. game.JobId .. "||",
                         inline = true
                     },
                     {
@@ -213,6 +224,7 @@ if success and response and response.Success then
     print("⚡ Executor:", executorName)
     print("🔑 Key:", scriptKey)
     print("👤 Player:", playerName)
+    print("🔢 Execution Count:", currentExecutionCount)
 else
     warn("❌ Failed to send webhook")
     if not success then
@@ -223,7 +235,7 @@ else
     end
 end
 
--- Now proceed with key verification
+-- Key verification function
 local function verifyKey(key)
     if key == "KEY_NOT_SET" then
         warn("Please set your key in the script: script_key='YOUR_KEY'")
