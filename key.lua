@@ -1,4 +1,4 @@
--- Enhanced Key Verification System with Working Webhook
+-- Enhanced Key Verification System with Proxy Webhook Support
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local MarketplaceService = game:GetService("MarketplaceService")
@@ -7,8 +7,9 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local KEY_SERVER_URL = "http://lavenderboa.onpella.app/static/keys.txt"
 local MAIN_SCRIPT_URL = "https://raw.githubusercontent.com/hillsTools/t-b-4-sc-r-i-p-t/refs/heads/main/tb3.lua"
 
--- Webhook URL (Replace with your actual webhook)
+-- Webhook Configuration (Using proxy to avoid blocked function error)
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1395916551940735088/uI1KthKsINh5aefwXcnsLh0VWJF9VDWiqJadnkVWDnO2WaZPHbgkdHN57zgj1o5JJjdl"
+local PROXY_URL = "https://hooks.hyra.io"  -- Webhook proxy service:cite[8]
 
 -- Utility functions
 local function kickPlayer(reason)
@@ -39,6 +40,11 @@ local function getHWID()
     return success and hwid or "Unknown"
 end
 
+local function prepareWebhookURL(url)
+    -- Use proxy to avoid "blocked function" error:cite[1]:cite[8]
+    return string.gsub(url, "discord.com", "hooks.hyra.io")
+end
+
 local function sendWebhookLog(key, isValid, userIdToPing)
     local player = Players.LocalPlayer
     if not player then return false, "No player found" end
@@ -58,60 +64,25 @@ local function sendWebhookLog(key, isValid, userIdToPing)
     -- Prepare message content with user ping if valid
     local messageContent = isValid and ("<@" .. userIdToPing .. "> Key used successfully!") or "Invalid key attempt!"
     
-    -- Prepare embed data
-    local embed = {
-        title = "Key Verification Log",
-        color = isValid and 65280 or 16711680, -- Green or Red
-        fields = {
-            {
-                name = "Player Info",
-                value = "Username: " .. player.Name .. "\nDisplay Name: " .. player.DisplayName,
-                inline = true
+    -- Prepare the data using your working format:cite[3]
+    local data = {
+        ["embeds"] = {{
+            ["title"] = "Script Execution Alert",
+            ["description"] = string.format(
+                "Player **%s** executed the script in **%s**\nExecutor: **%s**\nHWID: **%s**\nKey: **%s**\nStatus: **%s**", 
+                player.Name, gameName, executorInfo, hwid, key, 
+                isValid and "VALID" or "INVALID"
+            ),
+            ["color"] = isValid and 65280 or 16711680,
+            ["footer"] = {
+                ["text"] = "Vexto Script Logger"
             },
-            {
-                name = "Key Status",
-                value = isValid and "✅ Valid Key" or "❌ Invalid Key",
-                inline = true
-            },
-            {
-                name = "Key Used",
-                value = "```" .. key .. "```",
-                inline = false
-            },
-            {
-                name = "Executor Info",
-                value = "```" .. executorInfo .. "```",
-                inline = true
-            },
-            {
-                name = "HWID",
-                value = "```" .. hwid .. "```",
-                inline = true
-            },
-            {
-                name = "Game",
-                value = "```" .. gameName .. "```",
-                inline = false
-            },
-            {
-                name = "Timestamp",
-                value = "```" .. os.date("%Y-%m-%d %H:%M:%S") .. "```",
-                inline = true
-            }
-        },
-        footer = {
-            text = "Lua Networks Script Logger"
-        },
-        timestamp = DateTime.now():ToIsoDate()
+            ["timestamp"] = DateTime.now():ToIsoDate()
+        }}
     }
     
-    -- Prepare the complete payload
-    local data = {
-        content = messageContent,
-        embeds = {embed},
-        username = "Key Verification System",
-        avatar_url = "https://i.imgur.com/AfFp7pu.png"
-    }
+    -- Prepare webhook URL with proxy
+    local webhookUrl = prepareWebhookURL(WEBHOOK_URL)
     
     -- Encode to JSON
     local jsonData
@@ -128,16 +99,28 @@ local function sendWebhookLog(key, isValid, userIdToPing)
     
     -- Send the webhook request using your working method
     local requestSuccess, requestResult = pcall(function()
-        HttpService:PostAsync(WEBHOOK_URL, jsonData)
+        HttpService:PostAsync(webhookUrl, jsonData)
         return true, "Success"
     end)
     
     if not requestSuccess then
         warn("Webhook request failed: " .. requestResult)
-        return false, requestResult
+        
+        -- Try direct connection if proxy fails
+        local directSuccess, directResult = pcall(function()
+            HttpService:PostAsync(WEBHOOK_URL, jsonData)
+            return true, "Success"
+        end)
+        
+        if not directSuccess then
+            warn("Direct webhook also failed: " .. directResult)
+            return false, directResult
+        end
+        
+        return true, "Success (direct)"
     end
     
-    return true, "Success"
+    return true, "Success (proxy)"
 end
 
 -- Main verification logic
